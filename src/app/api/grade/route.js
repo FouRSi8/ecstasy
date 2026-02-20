@@ -236,6 +236,21 @@ export async function POST(req) {
         },
       });
       contentParts.push("\n\nTARGET IMAGE (Apply grade to this):");
+      if (stats) {
+        contentParts.push(`\n\nORIGINAL IMAGE STATISTICS:
+        - Base Saturation (0-1): ${stats.saturation?.toFixed(3)}
+        - Base Contrast: ${stats.contrast?.toFixed(3)}
+        - Base Luminance (0-255): ${stats.luminance?.toFixed(1)}
+        *NOTE: If Base Saturation > 0.35, the image is ALREADY extremely saturated. Do NOT increase saturation > 100.*`);
+      }
+      contentParts.push(`\n\nCRITICAL INSTRUCTION FOR REFERENCE MATCHING: 
+      A reference image has been provided! Your objective is to extract the cinematic color palette (especially shadow and highlight colors) from the REFERENCE image and logically apply them to the TARGET image.
+      
+      RULES FOR REFERENCE MATCHING:
+      1. AVOID OVERSATURATION: Do not blindly crank up global saturation, temperature, or tint. This ruins the image.
+      2. USE SPLIT TONING: Map the reference's dominant atmospheric colors primarily through 'shadowColor' and 'highlightColor', not harsh HSL shifts.
+      3. PROTECT SKIN TONES: If the reference is heavily tinted (e.g., extremely orange or green), do not let it destroy human skin in the target image. Keep 'orangeHue' safe.
+      4. Place your final matched grading values inside the "neutral" object in "dynamicStyles" (you can duplicate those exact same values into "warm" and "cold"). Ignore standard 'neutral/warm/cold' rules for this request and focus entirely on matching the reference.`);
     } else {
       contentParts.push("\n\nTARGET IMAGE (Grade this professionally):");
       if (stats) {

@@ -1840,3 +1840,94 @@ button {
 }
 
 /* End of duplicated blocks */
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .launch-page {
+    flex-direction: column;
+  }
+
+  .launch-left {
+    padding: 24px;
+    flex: none;
+    width: 100%;
+    height: auto;
+  }
+
+  .launch-right {
+    flex: 1;
+    width: 100%;
+  }
+
+  .launch-brand h1 {
+    font-size: 36px;
+  }
+
+  .typo-scatter {
+    transform: scale(0.5);
+    transform-origin: center center;
+  }
+
+  .plan-cards {
+    flex-direction: column;
+  }
+
+  .upload-screen {
+    padding: 24px;
+    gap: 20px;
+  }
+
+  .brand h1 {
+    font-size: 48px;
+  }
+
+  .upload-zone {
+    min-height: 300px;
+    padding: 20px;
+    gap: 24px;
+  }
+
+  .upload-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .upload-actions button {
+    width: 100%;
+  }
+
+  .editor-screen {
+    flex-direction: column;
+  }
+
+  .editor-header {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-left h2 {
+    font-size: 16px;
+  }
+
+  .image-viewport {
+    flex: 0 0 45dvh;
+    padding: 16px;
+  }
+
+  .controls-panel {
+    flex: 1;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid var(--glass-border);
+  }
+
+  .curves-svg {
+    height: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .trailing-layer {
+    font-size: 250px !important;
+  }
+}

@@ -379,34 +379,6 @@ export const EcstasyProvider = ({ children }) => {
       img.src = url;
     });
 
-  const applyFallbackData = (fallbackData) => {
-    if (!fallbackData) return;
-
-    setExposure(fallbackData.exposure ?? 0);
-    setContrast(fallbackData.contrast ?? 105);
-    setSaturation(fallbackData.saturation ?? 100);
-    setTemperature(fallbackData.temperature ?? 0);
-    setTint(fallbackData.tint ?? 0);
-    setHighlights(fallbackData.highlights ?? 0);
-    setShadows(fallbackData.shadows ?? 0);
-    setVibrance(fallbackData.vibrance ?? 0);
-
-    setRedHue(fallbackData.redHue ?? 0);
-    setRedSat(fallbackData.redSat ?? 0);
-    setOrangeHue(fallbackData.orangeHue ?? 0);
-    setOrangeSat(fallbackData.orangeSat ?? 0);
-    setGreenHue(fallbackData.greenHue ?? 0);
-    setGreenSat(fallbackData.greenSat ?? 0);
-    setBlueHue(fallbackData.blueHue ?? 0);
-    setBlueSat(fallbackData.blueSat ?? 0);
-
-    setCurveShadows(fallbackData.curveShadows ?? 0);
-    setCurveMidtones(fallbackData.curveMidtones ?? 0);
-    setCurveHighlights(fallbackData.curveHighlights ?? 0);
-    setCinematicGrade(100);
-    setCinematicStyle("neutral");
-  };
-
   const handleAutoGrade = async () => {
     if (!image) return false;
 
@@ -420,35 +392,21 @@ export const EcstasyProvider = ({ children }) => {
       reference ? "Analyzing reference & image..." : "AI analyzing image..."
     );
 
-    const runLocal = async () => {
-      const inputStats = await analyzeImage(image);
-      const refStats = reference ? await analyzeImage(reference) : null;
-      const settings = computeGradeFromAnalysis(inputStats, refStats);
-      setExposure(settings.exposure);
-      setContrast(settings.contrast);
-      setSaturation(settings.saturation);
-      setTemperature(settings.temperature);
-      setTint(settings.tint);
-      setHighlights(settings.highlights);
-      setShadows(settings.shadows);
-      setStatus(reference ? "Matched to reference" : "Graded");
-    };
-
     try {
-      if (reference) {
-        await runLocal();
-        setIsProcessing(false);
-        return true;
-      }
-
       const imageBase64 = await resizeImage(image);
       const inputStats = await analyzeImage(image);
+      let refBase64 = null;
+
+      if (reference) {
+        refBase64 = await resizeImage(reference);
+      }
 
       const response = await fetch("/api/grade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           image: imageBase64,
+          reference: refBase64,
           stats: inputStats,
           userApiKey: userApiKey || undefined,
           tier: tier,
@@ -460,17 +418,14 @@ export const EcstasyProvider = ({ children }) => {
       if (!response.ok) {
         if (data.error && (data.error.toLowerCase().includes("quota") || data.error.toLowerCase().includes("429") || data.error.toLowerCase().includes("exhausted"))) {
           setIsQuotaExhausted(true);
-          setStatus("Daily limit reached! Serving Fallback Base Grade.");
+          setStatus("Daily limit reached! Please upgrade to Pro.");
           setIsProcessing(false);
-
-          // Still apply the fallback data if provided by the backend, or run basic math local
-          if (data.fallback) {
-            applyFallbackData(JSON.parse(data.fallback));
-          } else {
-            handleAutoGradeLocal(inputStats);
-          }
           return false;
         }
+
+        setStatus("Error analyzing image.");
+        setIsProcessing(false);
+        return false;
       }
 
       if (response.ok && data.result) {
@@ -549,13 +504,11 @@ export const EcstasyProvider = ({ children }) => {
 
 
         setStatus("Graded");
-      } else {
-        await runLocal();
       }
       return true;
     } catch (e) {
-      console.warn("Falling back to local analysis:", e.message);
-      await runLocal();
+      console.warn("Error during API analysis:", e.message);
+      setStatus("Error analyzing image.");
       return true;
     } finally {
       setIsProcessing(false);

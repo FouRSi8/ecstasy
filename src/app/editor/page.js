@@ -15,6 +15,7 @@ export default function EditorPage() {
   const router = useRouter();
   const {
     image,
+    reference,
     processedImageUrl,
     fileName,
     category,
@@ -44,6 +45,12 @@ export default function EditorPage() {
     resetAdjustments,
     undo, redo, canUndo, canRedo
   } = useEcstasy();
+
+  React.useEffect(() => {
+    if (reference && activePanel === "cinematic") {
+      setActivePanel("basic");
+    }
+  }, [reference, activePanel, setActivePanel]);
 
   const handleExport = () => {
     if (!image) return;
@@ -179,15 +186,17 @@ export default function EditorPage() {
               >
                 Curves
               </button>
-              <button
-                className={`tab-btn ${activePanel === "cinematic" ? "active" : ""}`}
-                onClick={() => setActivePanel("cinematic")}
-                style={{
-                  color: activePanel === "cinematic" ? "var(--accent-color)" : "inherit"
-                }}
-              >
-                Cinematic
-              </button>
+              {!reference && (
+                <button
+                  className={`tab-btn ${activePanel === "cinematic" ? "active" : ""}`}
+                  onClick={() => setActivePanel("cinematic")}
+                  style={{
+                    color: activePanel === "cinematic" ? "var(--accent-color)" : "inherit"
+                  }}
+                >
+                  Cinematic
+                </button>
+              )}
             </div>
             {activePanel === "basic" && (
               <div className="panel-section">

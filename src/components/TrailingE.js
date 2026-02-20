@@ -719,7 +719,7 @@ export default function TrailingE() {
                                 position: 'absolute',
                                 left: '50%',
                                 top: '50%',
-                                fontSize: '200px', // Base size, scaled by transform
+                                fontSize: typeof window !== 'undefined' && window.innerWidth <= 768 ? '100px' : '200px', // Responsive base size
                                 // color: removed to allow CSS class override
                                 textTransform: 'lowercase',
                                 opacity: 0,
