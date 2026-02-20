@@ -24,6 +24,9 @@ const DEFAULT_GRADE = {
   curveShadows: 0,
   curveMidtones: 0,
   curveHighlights: 0,
+  // Cinematic Look
+  cinematicGrade: 0,
+  cinematicStyle: "neutral",
 };
 
 function parseGradeJson(text) {
@@ -67,6 +70,8 @@ function parseGradeJson(text) {
       curveShadows: Number(n.curveshadows) || 0,
       curveMidtones: Number(n.curvemidtones) || 0,
       curveHighlights: Number(n.curvehighlights) || 0,
+      cinematicGrade: Number(n.cinematicgrade) || 0,
+      cinematicStyle: String(n.cinematicstyle || "neutral").toLowerCase(),
     };
   } catch (e) {
     console.error("JSON Parse Error:", e);
@@ -95,22 +100,23 @@ Determine the category:
 ## STEP 2: APPLY CATEGORY-SPECIFIC GRADING
 
 ### YOUR MISSION:
-Create a FINAL, PERFECT grade. The user should NOT need to make any adjustments. The image should look stunning and ready to post to social media or use as a desktop wallpaper.
+Create a FINAL, PERFECT grade. You are a **Correctional Colorist**. The goal is to make the image look stunning and balanced, ready for social media or wallpaper use.
+**CRITICAL AI CONSTRAINT**: You MUST evaluate the original image properties provided to you. If an image is already highly saturated, you MUST NOT increase the saturation—you should maintain or slightly lower it (saturation <= 100) to preserve detail and prevent deep-frying the colors. You are enhancing, not destroying.
 
 ### GRADING PHILOSOPHY BY CATEGORY:
-- **Wildlife**: Subtle, natural look. Think National Geographic. Contrast: 105-112, Saturation: 102-110. Preserve natural colors, don't over-punch.
-- **Landscape**: Cinematic but grounded. Contrast: 108-118, Saturation: 105-115. Enhance golden hour warmth naturally.
-- **Portrait**: Skin-friendly. Soft contrast: 102-108, Saturation: 95-105. Protect skin tones.
-- **Anime**: Vibrant and punchy. Contrast: 115-130, Saturation: 120-140. Bold colors expected.
-- **Digital Art**: Desktop-wallpaper quality. Rich, vibrant colors. Contrast: 110-125, Saturation: 115-135. Deep blacks, punchy highlights. Make it POP for social media. Think trending ArtStation/Behance quality.
+- **Wildlife**: Subtle, natural look. Think National Geographic. Contrast: 105-112. Preserve natural colors, don't over-punch.
+- **Landscape**: Cinematic but grounded. Contrast: 108-118. Enhance golden hour warmth naturally.
+- **Portrait**: Skin-friendly. Soft contrast: 102-108. Protect skin tones.
+- **Anime**: Vibrant but balanced. Contrast: 110-125. *DO NOT oversaturate if the original is already colorful.*
+- **Digital Art**: Rich, vibrant colors. Contrast: 110-125. Deep blacks, punchy highlights. Think trending ArtStation quality. *DO NOT oversaturate if the original is already colorful.*
 - **Urban**: Moody/cinematic. Contrast: 110-120. Often cooler temperature.
-- **Food**: Warm and appetizing. Saturation: 105-115, slight orange warmth.
+- **Food**: Warm and appetizing. Slight orange warmth.
 - **Macro**: High detail. Moderate contrast: 105-115.
 
 ### BASIC CONTROLS (Scales):
 - exposure: -100 to 100 (0=neutral)
 - contrast: 0 to 200 (100=neutral). See category guidance above.
-- saturation: 0 to 200 (100=neutral). See category guidance above.
+- saturation: 0 to 200 (100=neutral). **Only increase if the original image is dull/desaturated.**
 - temperature: -100 to 100. Warm for golden hour, cool for moody.
 - tint: -100 to 100
 - highlights: -100 to 100. Recover blown highlights with negatives.
@@ -129,6 +135,14 @@ Control tonal response:
 - curveShadows: Lift/crush dark tones
 - curveMidtones: Overall brightness pivot
 - curveHighlights: Clip/extend bright tones
+
+### CINEMATIC SPLIT-TONING:
+You have a powerful "Teal & Orange" split-toning engine at your disposal.
+- cinematicStyle ("neutral", "warm", "cold"): Decide the mood of the split-toning. 
+  - 'warm' works beautifully on sunsets, cozy portraits, or autumn scenes a slightly purple shadow and strong golden highlight.
+  - 'cold' works great on night, moody, urban, or winter scenes with deep blue shadows and pale mint highlights.
+  - 'neutral' is the classic teal shadow and orange highlight.
+- cinematicGrade (0 to 100): The intensity of the split-toning effect. For subtle realism keep it between 10-30. For heavy stylization, push it to 50-80.
 
 ## STEP 3: OUTPUT
 Provide brief reasoning, then output JSON in a code block.
@@ -154,7 +168,9 @@ Provide brief reasoning, then output JSON in a code block.
   "blueSat": 5,
   "curveShadows": 5,
   "curveMidtones": 0,
-  "curveHighlights": -5
+  "curveHighlights": -5,
+  "cinematicStyle": "warm",
+  "cinematicGrade": 35
 }
 \`\`\`
 `;
@@ -162,7 +178,7 @@ Provide brief reasoning, then output JSON in a code block.
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { image, reference, userApiKey, tier } = body;
+    const { image, stats, reference, userApiKey, tier } = body;
 
     // Use user's API key if provided, otherwise fall back to env
     const apiKey = userApiKey || process.env.GEMINI_API_KEY;
@@ -195,6 +211,13 @@ export async function POST(req) {
       contentParts.push("\n\nTARGET IMAGE (Apply grade to this):");
     } else {
       contentParts.push("\n\nTARGET IMAGE (Grade this professionally):");
+      if (stats) {
+        contentParts.push(`\n\nORIGINAL IMAGE STATISTICS:
+        - Base Saturation (0-1): ${stats.saturation?.toFixed(3)}
+        - Base Contrast: ${stats.contrast?.toFixed(3)}
+        - Base Luminance (0-255): ${stats.luminance?.toFixed(1)}
+        *NOTE: If Base Saturation > 0.35, the image is ALREADY extremely saturated. Do NOT increase saturation > 100.*`);
+      }
     }
 
     contentParts.push({

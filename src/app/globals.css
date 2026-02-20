@@ -47,7 +47,8 @@
   --layer-7: #27272a;
   --layer-8: #18181b;
   --layer-9: #09090b;
-  --layer-10: #000000; /* Fades into black bg */
+  --layer-10: #000000; /* Fades into black bg */ 
+
   
   /* Scatter Text (Dark Mode) */
   --scatter-outline: rgba(255, 255, 255, 0.35);
@@ -89,7 +90,8 @@
     --layer-7: #cccccc;
     --layer-8: #dcdcdc;
     --layer-9: #ebebeb;
-    --layer-10: var(--bg-end); /* Melts into background */
+    --layer-10: var(--bg-end); /* Melts into background */ 
+
     
     /* Scatter Text (Light Mode - Visible Architecture) */
     --scatter-outline: rgba(0, 0, 0, 0.3);
@@ -121,10 +123,15 @@
   box-sizing: border-box;
   font-family: "Inter", sans-serif;
 }
+html {
+  overflow: hidden;
+  height: 100%;
+}
 body {
   background-color: var(--bg-end);
   color: var(--text-main);
-  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height for mobile stability */
+  width: 100vw;
   overflow: hidden;
   background-image: radial-gradient(
     circle at 50% 50%,
@@ -134,8 +141,9 @@ body {
 }
 .app-container {
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
+  overflow: hidden;
 }
 /* Upload Screen */
 .upload-screen {
@@ -447,7 +455,8 @@ button {
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
   animation: fadeIn 0.6s ease;
 }
 .editor-header {
@@ -579,11 +588,11 @@ button {
 }
 .tab-btn {
   flex: 1;
-  padding: 16px;
+  padding: 12px 8px;
   background: transparent;
   border: none;
   color: var(--text-muted);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 1px;
   text-transform: uppercase;
@@ -1026,8 +1035,9 @@ button {
 .launch-page {
   display: flex;
   width: 100vw;
-  height: 100vh;
+  height: 100dvh;
   position: relative; /* Context for full-screen fixed elements */
+  overflow: hidden; 
 }
 .launch-left {
   flex: 1;

@@ -4,35 +4,37 @@ import { useRouter } from "next/navigation";
 import { useEcstasy } from "../../context/EcstasyContext";
 
 export default function UploadPage() {
-  const { 
-    image, 
-    handleFileUpload, 
+  const {
+    image,
+    handleFileUpload,
     reference,
     handleReferenceUpload,
     handleAutoGrade,
     isProcessing,
     status,
     tier,
-    usageCount,
+    isQuotaExhausted,
     setHasLaunched
   } = useEcstasy();
-  
+
   const router = useRouter();
 
   const onFileUpload = (e) => {
     handleFileUpload(e.target.files[0]);
   };
-  
+
   const onReferenceUpload = (e) => {
     handleReferenceUpload(e.target.files[0]);
   };
-  
+
   const triggerFileInput = () => document.getElementById("hidden-input").click();
   const triggerReferenceInput = () => document.getElementById("hidden-reference-input").click();
 
   const handleStartGrading = async () => {
-    await handleAutoGrade();
-    router.push("/editor");
+    const success = await handleAutoGrade();
+    if (success !== false) {
+      router.push("/editor");
+    }
   };
 
   const handleChangeKey = () => {
@@ -55,9 +57,9 @@ export default function UploadPage() {
   }, [image]);
 
   const buttonStyle = {
-      backgroundColor: "var(--accent-color)", 
-      color: "var(--accent-text)",
-      fontWeight: "700"
+    backgroundColor: "var(--accent-color)",
+    color: "var(--accent-text)",
+    fontWeight: "700"
   };
 
   return (
@@ -69,15 +71,7 @@ export default function UploadPage() {
           </h1>
           <p>Professional AI Color Grading</p>
           <div className="brand-meta">
-            {tier === "free" && (
-              <span 
-                  className="usage-indicator"
-                  style={buttonStyle}
-              >
-                  {usageCount}/20 today
-              </span>
-            )}
-            <button 
+            <button
               className="change-key-btn"
               onClick={handleChangeKey}
             >
@@ -89,11 +83,11 @@ export default function UploadPage() {
           {image ? (
             <>
               <div className="preview-container">
-                <img 
-                  key={image} 
-                  src={image} 
-                  className="preview-image" 
-                  alt="Preview" 
+                <img
+                  key={image}
+                  src={image}
+                  className="preview-image"
+                  alt="Preview"
                 />
                 {reference && (
                   <div className="thumbnail-box">

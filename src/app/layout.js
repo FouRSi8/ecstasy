@@ -1,5 +1,9 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import CustomCursor from "../components/CustomCursor";
+import Bubbles from "../components/Bubbles";
+import Whispers from "../components/Whispers";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,6 +27,9 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <EcstasyProvider>
+          <Bubbles />
+          <CustomCursor />
+          <Whispers />
           {children}
         </EcstasyProvider>
       </body>

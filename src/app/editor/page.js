@@ -2,12 +2,14 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useEcstasy } from "../../context/EcstasyContext";
-import { 
-  CurvesEditor, 
-  HSLWheel, 
-  CompareSlider, 
-  ControlSlider 
+import {
+  CurvesEditor,
+  HSLWheel,
+  CompareSlider,
+  ControlSlider
 } from "../../components/EditorComponents";
+import { applyColorGrading } from "../../hooks/useImageFilter";
+import { setCrossOriginIfNeeded } from "../../utils/colorUtils";
 
 export default function EditorPage() {
   const router = useRouter();
@@ -36,25 +38,71 @@ export default function EditorPage() {
     curveShadows, setCurveShadows,
     curveMidtones, setCurveMidtones,
     curveHighlights, setCurveHighlights,
-    resetAdjustments
+    cinematicGrade, setCinematicGrade,
+    cinematicStyle, setCinematicStyle,
+    resetAdjustments,
+    undo, redo, canUndo, canRedo
   } = useEcstasy();
 
   const handleExport = () => {
-    if (!processedImageUrl) return;
-    const link = document.createElement("a");
-    link.href = processedImageUrl;
-    link.download = `edited-${fileName || "image.jpg"}`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    if (!image) return;
+
+    // We process the full resolution image right before export
+    const img = new Image();
+    setCrossOriginIfNeeded(img, image);
+    img.src = image;
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Grab current context state for settings object
+        const currentSettings = {
+          exposure, contrast, highlights, shadows,
+          temperature, tint, vibrance, saturation,
+          redHue, redSat, orangeHue, orangeSat,
+          greenHue, greenSat, blueHue, blueSat,
+          curveShadows, curveMidtones, curveHighlights,
+          cinematicGrade, cinematicStyle
+        };
+
+        applyColorGrading(imageData.data, currentSettings);
+        ctx.putImageData(imageData, 0, 0);
+
+        // Export as High-Quality JPEG
+        const fullResUrl = canvas.toDataURL("image/jpeg", 0.95);
+        const link = document.createElement("a");
+        link.href = fullResUrl;
+        link.download = `ecstasy-grade-${fileName || "image.jpg"}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.error("Export Failed:", err);
+        // Fallback to preview if full res fails (e.g. strict CORS on canvas)
+        if (processedImageUrl) {
+          const link = document.createElement("a");
+          link.href = processedImageUrl;
+          link.download = `ecstasy-preview-${fileName || "image.jpg"}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      }
+    };
   };
 
   // If no image, redirect back to upload (safety)
   if (!image) {
-      if (typeof window !== "undefined") {
-        router.replace("/upload");
-      }
-      return null;
+    if (typeof window !== "undefined") {
+      router.replace("/upload");
+    }
+    return null;
   }
 
   return (
@@ -65,41 +113,39 @@ export default function EditorPage() {
             <h2>ECSTASY</h2>
             <span className="divider">|</span>
             <span className="file-name">{fileName}</span>
-            {category && (() => {
-              // Chameleon colors based on category
-              const categoryColors = {
-                Landscape: "#4ade80",
-                Wildlife: "#facc15",
-                Portrait: "#f472b6",
-                Anime: "#a78bfa",
-                Urban: "#64748b",
-                Food: "#fb923c",
-                Macro: "#22d3d1",
-                General: "#6366f1",
-                "Digital Art": "#ec4899",
-              };
-              const bgColor = categoryColors[category] || "#6366f1";
-              // Calculate contrast text color
-              const hex = bgColor.replace("#", "");
-              const r = parseInt(hex.substr(0, 2), 16);
-              const g = parseInt(hex.substr(2, 2), 16);
-              const b = parseInt(hex.substr(4, 2), 16);
-              const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-              const textColor = luminance > 0.5 ? "#000000" : "#ffffff";
-              return (
-                <span
-                  className="category-badge"
-                  style={{ backgroundColor: bgColor, color: textColor }}
-                  title="AI Detected Category"
-                >
-                  {category}
-                </span>
-              );
-            })()}
+            {category && (
+              <span
+                className="category-badge"
+                style={{
+                  backgroundColor: "var(--accent-color, #6366f1)",
+                  color: "var(--accent-text, #ffffff)",
+                  boxShadow: "0 0 10px var(--accent-glow, rgba(99, 102, 241, 0.5))"
+                }}
+                title="AI Detected Category"
+              >
+                {category}
+              </span>
+            )}
           </div>
           <div className="header-right">
             <button className="header-btn" onClick={() => router.push("/upload")}>
               ← Back
+            </button>
+            <button
+              className="header-btn"
+              onClick={undo}
+              disabled={!canUndo}
+              style={{ opacity: canUndo ? 1 : 0.4, cursor: canUndo ? "pointer" : "not-allowed" }}
+            >
+              ↩ Undo
+            </button>
+            <button
+              className="header-btn"
+              onClick={redo}
+              disabled={!canRedo}
+              style={{ opacity: canRedo ? 1 : 0.4, cursor: canRedo ? "pointer" : "not-allowed" }}
+            >
+              ↪ Redo
             </button>
             <button className="header-btn" onClick={resetAdjustments}>
               Reset
@@ -132,6 +178,16 @@ export default function EditorPage() {
                 onClick={() => setActivePanel("curves")}
               >
                 Curves
+              </button>
+              <button
+                className={`tab-btn ${activePanel === "cinematic" ? "active" : ""}`}
+                onClick={() => setActivePanel("cinematic")}
+                style={{
+                  color: activePanel === "cinematic" ? "var(--accent-color)" : "inherit",
+                  textShadow: activePanel === "cinematic" ? "0 0 10px var(--accent-glow)" : "none"
+                }}
+              >
+                Cinematic
               </button>
             </div>
             {activePanel === "basic" && (
@@ -232,6 +288,55 @@ export default function EditorPage() {
                     else if (key === "curveHighlights") setCurveHighlights(val);
                   }}
                 />
+              </div>
+            )}
+            {activePanel === "cinematic" && (
+              <div className="panel-section">
+                <h3>Cinematic Grade</h3>
+
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', marginTop: '16px' }}>
+                  <button
+                    onClick={() => setCinematicStyle('warm')}
+                    style={{
+                      flex: 1, padding: '8px 4px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer',
+                      background: cinematicStyle === 'warm' ? '#fff' : 'rgba(255,255,255,0.05)',
+                      color: cinematicStyle === 'warm' ? '#000' : '#888',
+                      border: '1px solid', borderColor: cinematicStyle === 'warm' ? '#ffb414' : 'transparent',
+                      transition: 'all 0.2s ease', fontWeight: 600
+                    }}>Warm</button>
+                  <button
+                    onClick={() => setCinematicStyle('neutral')}
+                    style={{
+                      flex: 1, padding: '8px 4px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer',
+                      background: cinematicStyle === 'neutral' ? '#fff' : 'rgba(255,255,255,0.05)',
+                      color: cinematicStyle === 'neutral' ? '#000' : '#888',
+                      border: '1px solid', borderColor: cinematicStyle === 'neutral' ? '#00e5ff' : 'transparent',
+                      transition: 'all 0.2s ease', fontWeight: 600
+                    }}>Neutral</button>
+                  <button
+                    onClick={() => setCinematicStyle('cold')}
+                    style={{
+                      flex: 1, padding: '8px 4px', fontSize: '11px', borderRadius: '6px', cursor: 'pointer',
+                      background: cinematicStyle === 'cold' ? '#fff' : 'rgba(255,255,255,0.05)',
+                      color: cinematicStyle === 'cold' ? '#000' : '#888',
+                      border: '1px solid', borderColor: cinematicStyle === 'cold' ? '#2979ff' : 'transparent',
+                      transition: 'all 0.2s ease', fontWeight: 600
+                    }}>Cold</button>
+                </div>
+
+                <ControlSlider
+                  label="Intensity"
+                  value={cinematicGrade}
+                  min={0}
+                  max={100}
+                  onChange={setCinematicGrade}
+                />
+                <p style={{
+                  fontSize: '10px', color: 'var(--text-muted)', marginTop: '20px',
+                  lineHeight: '1.4', fontStyle: 'italic', opacity: 0.8
+                }}>
+                  A true "Teal & Orange" split-tone process mapping cool cinematic hues into shadows and vibrant, punchy colors into highlights depending on the chosen look. Includes a gentle S-Curve contrast pass.
+                </p>
               </div>
             )}
           </div>
