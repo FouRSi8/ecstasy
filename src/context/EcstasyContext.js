@@ -74,6 +74,11 @@ export const EcstasyProvider = ({ children }) => {
     }
   }, []);
 
+  // Reset quota exhaustion if the user changes their API key
+  useEffect(() => {
+    setIsQuotaExhausted(false);
+  }, [userApiKey]);
+
   // --- COLOR EXTRACTION EFFECT ---
   useEffect(() => {
     if (!image) return;

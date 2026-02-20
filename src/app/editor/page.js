@@ -112,7 +112,12 @@ export default function EditorPage() {
           redHue, redSat, orangeHue, orangeSat,
           greenHue, greenSat, blueHue, blueSat,
           curveShadows, curveMidtones, curveHighlights,
-          cinematicGrade, cinematicStyle, dynamicPalettes
+          cinematicGrade, cinematicStyle,
+          dynamicPalettes: dynamicPalettes ? {
+            warm: { shadowColor: dynamicPalettes.warm?.shadowColor, highlightColor: dynamicPalettes.warm?.highlightColor },
+            neutral: { shadowColor: dynamicPalettes.neutral?.shadowColor, highlightColor: dynamicPalettes.neutral?.highlightColor },
+            cold: { shadowColor: dynamicPalettes.cold?.shadowColor, highlightColor: dynamicPalettes.cold?.highlightColor }
+          } : null
         };
 
         applyColorGrading(imageData.data, currentSettings);

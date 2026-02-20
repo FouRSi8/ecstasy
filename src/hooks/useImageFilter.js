@@ -191,42 +191,39 @@ export const useImageFilter = (image, settings) => {
 
   useEffect(() => {
     if (!image) return;
-    const img = new Image();
-    setCrossOriginIfNeeded(img, image);
-    img.src = image;
-    img.onload = () => {
-      try {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
 
-        // --- DOWNSCALE FOR PREVIEW ---
-        const MAX_DIMENSION = 1200;
-        let width = img.width;
-        let height = img.height;
+    // Debounce heavy JS pixel processing to prevent main thread blocking (approx 24fps)
+    const timeoutId = setTimeout(() => {
+      const img = new Image();
+      setCrossOriginIfNeeded(img, image);
+      img.src = image;
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
 
-        if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-          if (width > height) {
-            height = Math.round((height * MAX_DIMENSION) / width);
-            width = MAX_DIMENSION;
-          } else {
-            width = Math.round((width * MAX_DIMENSION) / height);
-            height = MAX_DIMENSION;
-          }
+          // --- RENDER NATIVE RESOLUTION FOR PREVIEW ---
+          // Using native resolution (no downscaling) for high quality preview.
+          // Relies on the 30ms setTimeout debounce to prevent extreme UI lag.
+          let width = img.width;
+          let height = img.height;
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          applyColorGrading(imageData.data, settings);
+
+          ctx.putImageData(imageData, 0, 0);
+          setProcessedImage(canvas.toDataURL("image/jpeg", 0.8)); // Use JPEG for faster output
+        } catch {
+          setProcessedImage(null);
         }
+      };
+    }, 30); // 30ms debounce
 
-        canvas.width = width;
-        canvas.height = height;
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        applyColorGrading(imageData.data, settings);
-
-        ctx.putImageData(imageData, 0, 0);
-        setProcessedImage(canvas.toDataURL());
-      } catch {
-        setProcessedImage(null);
-      }
-    };
+    return () => clearTimeout(timeoutId);
   }, [image, settings]);
   return processedImage;
 };

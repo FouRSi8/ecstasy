@@ -249,10 +249,10 @@ export async function POST(req) {
           A reference image has been provided! Your objective is to extract the EXACT cinematic color palette(exposure, contrast, temperature, tint, shadow colors, highlight colors) from the REFERENCE image and forcefully apply them to the TARGET image.
       
       RULES FOR REFERENCE MATCHING:
-          1. IGNORE "BALANCED" RULES: Your only goal is to copy the reference's look. If the reference is extremely dark and crushed, make the target extremely dark. If the reference is blazing orange, make the target blazing orange.
-      2. USE HEAVY SPLIT TONING: Map the reference's dominant atmospheric colors strongly through 'shadowColor' and 'highlightColor'. 
-      3. HUE SHIFTS: If the reference has a specific overarching tint(like green Matrix tint or warm sunset), push the global temperature / tint and HSL values to achieve that exact wash.
-      4. Place your final matched grading values inside the "neutral" object in "dynamicStyles".We will use this as the base match.`);
+      1. MATCH INTENT, NOT ABSOLUTES: Copy the reference's mood, but DO NOT over-saturate or deep-fry the target image. Cap 'saturation' at 115 max and 'vibrance' at max 20.
+      2. SKIN TONE PROTECTION (CRITICAL): If the target image has people, you MUST protect skin tones. Do NOT use extreme global 'temperature' values (keep between -20 and 25). If the reference is very warm, achieve it via subtle Split Toning ('shadowColor'/'highlightColor') instead of flooding the image with global Temperature.
+      3. USE HEAVY SPLIT TONING: Map the reference's dominant atmospheric colors strongly through 'shadowColor' and 'highlightColor', not just the global sliders.
+      4. Place your final matched grading values inside the "neutral" object in "dynamicStyles". We will use this as the base match.`);
     } else {
       contentParts.push("\n\nTARGET IMAGE (Grade this professionally):");
       if (stats) {

@@ -1,5 +1,5 @@
 "use client";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 
 export default function TrailingE() {
     const layerRefs = useRef([]);
@@ -54,7 +54,18 @@ export default function TrailingE() {
        - investigating: Move slowly towards cursor
     */
 
+    // We will return early at the render phase, not before hooks.
+    const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
+        setIsMobile(/Mobi|Android/i.test(navigator.userAgent));
+    }, []);
+
+    useEffect(() => {
+        // Disable fish log on mobile
+        if (isMobile || (typeof navigator !== 'undefined' && /Mobi|Android/i.test(navigator.userAgent))) {
+            return;
+        }
+
         const spots = getHidingSpots();
         const randomSpot = spots[Math.floor(Math.random() * 4)];
         mouseRef.current = { ...randomSpot };
@@ -682,8 +693,20 @@ export default function TrailingE() {
     const babyLayers = Array.from({ length: 5 }); // Reduced to 5
     const babies = [0, 1, 2];
 
+    if (isMobile) {
+        return null;
+    }
+
     return (
-        <>
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            pointerEvents: 'none', // Ensure it doesn't block interactions
+            zIndex: 9999, // High z-index to be on top
+        }}>
             {/* Big E Layers */}
             {layers.map((_, i) => (
                 <div
@@ -733,6 +756,6 @@ export default function TrailingE() {
                     ))}
                 </div>
             ))}
-        </>
+        </div>
     );
 }

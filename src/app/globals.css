@@ -1869,9 +1869,9 @@ button {
 
   .launch-page {
     flex-direction: column;
-    height: auto;
+    height: 100dvh;
     min-height: 100dvh;
-    overflow-y: auto;
+    overflow: hidden;
   }
 
   .launch-left {
