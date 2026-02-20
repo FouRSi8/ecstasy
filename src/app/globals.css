@@ -230,7 +230,10 @@ body {
 .upload-zone {
   width: 100%;
   max-width: 900px;
-  min-height: 500px;
+  flex: 1;
+  /* Always take up available vertical space instead of hard min-height */
+  min-height: 0;
+  /* Allows container to shrink on smaller screens */
   background: var(--glass-surface);
   border: 2px dashed var(--glass-border);
   border-radius: 24px;
@@ -239,7 +242,8 @@ body {
   align-items: center;
   justify-content: center;
   padding: 40px;
-  gap: 50px;
+  gap: 30px;
+  /* Reduced gap slightly to fit better horizontally */
   /* Transition Out: Slow fade for glow/border */
   transition: transform 0.4s ease, border-color 3s ease-out, box-shadow 3s ease-out;
   backdrop-filter: blur(20px);
@@ -282,6 +286,8 @@ body {
   font-size: 80px;
   opacity: 0.3;
   animation: float 3s ease-in-out infinite;
+  /* Force the browser to use the native OS emoji font */
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", "Android Emoji", "EmojiSymbols", sans-serif;
 }
 
 @keyframes float {
@@ -311,20 +317,19 @@ body {
 
 .preview-container {
   position: relative;
-  display: grid;
-  /* Grid eliminates all whitespace artifacts */
-  place-items: center;
-  width: fit-content;
-  height: fit-content;
-  line-height: 0;
-  font-size: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   margin: 0 auto;
 }
 
 .preview-image {
   display: block;
   max-width: 100%;
-  max-height: 400px;
+  max-height: 100%;
   width: auto;
   height: auto;
   object-fit: contain;
@@ -647,6 +652,8 @@ button {
   border-left: 1px solid var(--glass-border);
   overflow-y: auto;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .controls-panel::-webkit-scrollbar {
@@ -710,6 +717,8 @@ button {
 .panel-section {
   padding: 24px;
   border-bottom: 1px solid var(--glass-border);
+  flex: 1;
+  /* Stretch to fill bottom space */
 }
 
 .panel-section h3 {
@@ -1842,12 +1851,31 @@ button {
 /* End of duplicated blocks */
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
+
+  html,
+  body {
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .app-container {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .launch-page {
     flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
   }
 
   .launch-left {
-    padding: 24px;
+    padding: 16px;
     flex: none;
     width: 100%;
     height: auto;
@@ -1856,34 +1884,89 @@ button {
   .launch-right {
     flex: 1;
     width: 100%;
+    min-height: 200px;
+    /* Give the E some explicit space if it stacks */
   }
 
   .launch-brand h1 {
-    font-size: 36px;
+    font-size: 32px;
   }
 
+  .launch-tagline {
+    font-size: 13px;
+    margin-bottom: 24px;
+  }
+
+  .broken-box {
+    padding: 20px;
+    border-radius: 16px;
+  }
+
+  /* Adaptive background scatter scaling depending on viewport orientation (vmin) */
   .typo-scatter {
-    transform: scale(0.5);
-    transform-origin: center center;
+    transform: scale(0.35);
+    /* Fallback */
+    transform-origin: top center;
+  }
+
+  /* At mobile sizes, we override the fixed pixel sizes of scatter text 
+     with vmin so they perfectly fit both horizontal and vertical Android aspects */
+  .typo-scatter .s1 {
+    font-size: 80vmin !important;
+  }
+
+  .typo-scatter .s2 {
+    font-size: 40vmin !important;
+  }
+
+  .typo-scatter .s3 {
+    font-size: 25vmin !important;
+  }
+
+  .typo-scatter .s4 {
+    font-size: 60vmin !important;
+  }
+
+  .typo-scatter .s5 {
+    font-size: 45vmin !important;
+  }
+
+  .typo-scatter .s6 {
+    font-size: 20vmin !important;
+  }
+
+  .typo-scatter .s7 {
+    font-size: 35vmin !important;
   }
 
   .plan-cards {
-    flex-direction: column;
+    flex-direction: row;
+    /* Keep them horizontal if possible, or tightly stacked */
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .plan-card {
+    padding: 12px 8px;
   }
 
   .upload-screen {
-    padding: 24px;
-    gap: 20px;
+    padding: 16px;
+    gap: 16px;
   }
 
   .brand h1 {
-    font-size: 48px;
+    font-size: 42px;
+  }
+
+  .preview-image {
+    max-height: 35vh;
   }
 
   .upload-zone {
-    min-height: 300px;
-    padding: 20px;
-    gap: 24px;
+    min-height: auto;
+    padding: 16px;
+    gap: 16px;
   }
 
   .upload-actions {
@@ -1897,6 +1980,12 @@ button {
 
   .editor-screen {
     flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .editor-content {
+    flex-direction: column;
   }
 
   .editor-header {
@@ -1909,24 +1998,38 @@ button {
     font-size: 16px;
   }
 
+  .header-right {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
   .image-viewport {
-    flex: 0 0 45dvh;
+    flex: none;
+    height: auto;
+    min-height: 45vh;
     padding: 16px;
+    width: 100%;
+  }
+
+  .ghost-img {
+    max-height: 50vh;
   }
 
   .controls-panel {
     flex: 1;
+    /* Stretch to fill remaining desktop space below it */
     width: 100%;
+    height: auto;
     border-left: none;
     border-top: 1px solid var(--glass-border);
+    overflow: visible;
+    /* Let the container scroll naturally */
   }
 
   .curves-svg {
     height: 150px;
   }
-}
 
-@media (max-width: 768px) {
   .trailing-layer {
     font-size: 250px !important;
   }

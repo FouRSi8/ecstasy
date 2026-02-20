@@ -389,7 +389,7 @@ export const EcstasyProvider = ({ children }) => {
 
     setIsProcessing(true);
     setStatus(
-      reference ? "Analyzing reference & image..." : "AI analyzing image..."
+      reference ? "Analyzing reference image..." : "AI analyzing image..."
     );
 
     try {

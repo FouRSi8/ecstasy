@@ -129,8 +129,8 @@ export const applyColorGrading = (data, settings) => {
           shadowColor = { r: 5, g: 40, b: 90 }; // Deep cool blue shadows
           highlightColor = { r: 180, g: 220, b: 210 }; // Pale minty highlights
         } else { // neutral
-          shadowColor = { r: 10, g: 80, b: 100 }; // Standard Teal
-          highlightColor = { r: 255, g: 200, b: 150 }; // Soft Amber/Orange
+          shadowColor = { r: 40, g: 45, b: 50 }; // Very subtle cool grey
+          highlightColor = { r: 245, g: 240, b: 235 }; // Very subtle warm white
         }
       }
 
@@ -142,10 +142,10 @@ export const applyColorGrading = (data, settings) => {
       let shadowWeight = Math.max(0, (128 - lum) / 128); // 0 to 1
       let highlightWeight = Math.max(0, (lum - 128) / 127);
 
-      // We want a subtle, professional split tone. The HSL handles the gross color shifts.
-      // 40% maximum opacity for split toning is tasteful for cinematic grading.
-      shadowWeight = Math.pow(shadowWeight, 1.5) * intensity * 0.40;
-      highlightWeight = Math.pow(highlightWeight, 1.5) * intensity * 0.40;
+      // We want a professional split tone. 
+      // Increased from 40% to 85% maximum opacity so reference styles can actually punch through powerfully.
+      shadowWeight = Math.pow(shadowWeight, 1.5) * intensity * 0.85;
+      highlightWeight = Math.pow(highlightWeight, 1.5) * intensity * 0.85;
 
       // --- SOFT LIGHT / MULTIPLY HYBRID BLENDING ---
       // Instead of linearly overriding the pixel (which flattens the image),
@@ -174,7 +174,7 @@ export const applyColorGrading = (data, settings) => {
       b = b * (1 - highlightWeight) + blendSoftLight(b, highlightColor.b) * highlightWeight;
 
       // Cinematic Contrast S-Curve boost
-      const contrastBoost = intensity * 0.12; // 12% extra contrast for depth
+      const contrastBoost = style === 'neutral' ? intensity * 0.04 : intensity * 0.12; // Less contrast for neutral
       r = ((r / 255 - 0.5) * (1 + contrastBoost) + 0.5) * 255;
       g = ((g / 255 - 0.5) * (1 + contrastBoost) + 0.5) * 255;
       b = ((b / 255 - 0.5) * (1 + contrastBoost) + 0.5) * 255;

@@ -162,7 +162,7 @@ CRITICAL INSTRUCTION ON WARM/COLD STYLES & SKIN TONES:
 2. **PORTRAIT / HUMAN SKIN WARNING**: When creating a 'Warm' style for an image with humans in it, NEVER push \`orangeHue\` positive (e.g. +15). Positive orange hue shifts skin tones into yellow/green (jaundice). Keep \`orangeHue\` at 0 or slightly negative (reddish) to protect skin!
 3. Rely heavily on the \`shadowColor\` and \`highlightColor\` split-toning palettes to inject the mood into the shadows and highlights intelligently.
 
-- **Neutral**: Forcefully balance the image. Remove oversaturation or extreme color casts to make it perfectly natural.
+- **Neutral**: Forcefully balance the image. Remove oversaturation or extreme color casts to make it perfectly natural. Protect true colors and ONLY add saturation if the original image is notably dull; otherwise, keep saturation near 100 or slightly lower. The split-toning palette should be nearly grayscale.
 - **Warm**: Apply Industry grade color correction to make the image change its tones entirely to warmth. Push orange/gold HSL (but protect skin hue), and provide a strong warm split-toning palette (\`shadowColor\` & \`highlightColor\`).
 - **Cold**: Apply Industry grade color correction to make the image change its tones entirely to cold. Push cyan/navy HSL, and provide a strong icy split-toning palette (\`shadowColor\` & \`highlightColor\`).
 
@@ -241,24 +241,26 @@ export async function POST(req) {
         - Base Saturation (0-1): ${stats.saturation?.toFixed(3)}
         - Base Contrast: ${stats.contrast?.toFixed(3)}
         - Base Luminance (0-255): ${stats.luminance?.toFixed(1)}
-        *NOTE: If Base Saturation > 0.35, the image is ALREADY extremely saturated. Do NOT increase saturation > 100.*`);
+        *DYNAMIC SATURATION RULES:*
+        - If Base Saturation < 0.15 (Dull/Faded): Increase saturation (110-130).
+        - If Base Saturation > 0.30 (Vibrant/Oversaturated): Maintain or reduce saturation (90-100). Do NOT exceed 100.*`);
       }
-      contentParts.push(`\n\nCRITICAL INSTRUCTION FOR REFERENCE MATCHING: 
-      A reference image has been provided! Your objective is to extract the cinematic color palette (especially shadow and highlight colors) from the REFERENCE image and logically apply them to the TARGET image.
+      contentParts.push(`\n\nCRITICAL INSTRUCTION FOR REFERENCE MATCHING:
+          A reference image has been provided! Your objective is to extract the EXACT cinematic color palette(exposure, contrast, temperature, tint, shadow colors, highlight colors) from the REFERENCE image and forcefully apply them to the TARGET image.
       
       RULES FOR REFERENCE MATCHING:
-      1. AVOID OVERSATURATION: Do not blindly crank up global saturation, temperature, or tint. This ruins the image.
-      2. USE SPLIT TONING: Map the reference's dominant atmospheric colors primarily through 'shadowColor' and 'highlightColor', not harsh HSL shifts.
-      3. PROTECT SKIN TONES: If the reference is heavily tinted (e.g., extremely orange or green), do not let it destroy human skin in the target image. Keep 'orangeHue' safe.
-      4. Place your final matched grading values inside the "neutral" object in "dynamicStyles" (you can duplicate those exact same values into "warm" and "cold"). Ignore standard 'neutral/warm/cold' rules for this request and focus entirely on matching the reference.`);
+          1. IGNORE "BALANCED" RULES: Your only goal is to copy the reference's look. If the reference is extremely dark and crushed, make the target extremely dark. If the reference is blazing orange, make the target blazing orange.
+      2. USE HEAVY SPLIT TONING: Map the reference's dominant atmospheric colors strongly through 'shadowColor' and 'highlightColor'. 
+      3. HUE SHIFTS: If the reference has a specific overarching tint(like green Matrix tint or warm sunset), push the global temperature / tint and HSL values to achieve that exact wash.
+      4. Place your final matched grading values inside the "neutral" object in "dynamicStyles".We will use this as the base match.`);
     } else {
       contentParts.push("\n\nTARGET IMAGE (Grade this professionally):");
       if (stats) {
         contentParts.push(`\n\nORIGINAL IMAGE STATISTICS:
-        - Base Saturation (0-1): ${stats.saturation?.toFixed(3)}
+          - Base Saturation(0 - 1): ${stats.saturation?.toFixed(3)}
         - Base Contrast: ${stats.contrast?.toFixed(3)}
-        - Base Luminance (0-255): ${stats.luminance?.toFixed(1)}
-        *NOTE: If Base Saturation > 0.35, the image is ALREADY extremely saturated. Do NOT increase saturation > 100.*`);
+        - Base Luminance(0 - 255): ${stats.luminance?.toFixed(1)}
+        * NOTE: If Base Saturation > 0.35, the image is ALREADY extremely saturated.Do NOT increase saturation > 100. * `);
       }
     }
 

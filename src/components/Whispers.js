@@ -155,7 +155,7 @@ export default function Whispers() {
         left: position.x,
         top: position.y,
         color: 'rgba(255, 255, 255, 0.5)',
-        fontSize: '12px',
+        fontSize: typeof window !== 'undefined' && window.innerWidth <= 768 ? '10px' : '12px',
         fontFamily: 'var(--font-geist-mono)',
         pointerEvents: 'none',
         transition: 'opacity 0.8s ease',

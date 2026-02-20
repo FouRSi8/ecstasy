@@ -11,6 +11,42 @@ import {
 import { applyColorGrading } from "../../hooks/useImageFilter";
 import { setCrossOriginIfNeeded } from "../../utils/colorUtils";
 
+// --- COMPONENT: ExportSplitButton ---
+const ExportSplitButton = ({ onExport }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+
+  if (!isOpen) {
+    return (
+      <button
+        className="export-btn"
+        onClick={() => setIsOpen(true)}
+        style={{ width: '100px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+      >
+        Export
+      </button>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', width: '100px' }} onMouseLeave={() => setIsOpen(false)}>
+      <button
+        className="export-btn"
+        onClick={() => { onExport('image/jpeg'); setIsOpen(false); }}
+        style={{ flex: 1, padding: '10px 0', borderTopRightRadius: 0, borderBottomRightRadius: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '11px' }}
+      >
+        JPG
+      </button>
+      <button
+        className="export-btn"
+        onClick={() => { onExport('image/png'); setIsOpen(false); }}
+        style={{ flex: 1, padding: '10px 0', borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: '1px solid rgba(255,255,255,0.2)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '11px' }}
+      >
+        PNG
+      </button>
+    </div>
+  );
+};
+
 export default function EditorPage() {
   const router = useRouter();
   const {
@@ -52,7 +88,7 @@ export default function EditorPage() {
     }
   }, [reference, activePanel, setActivePanel]);
 
-  const handleExport = () => {
+  const handleExport = (format = "image/jpeg") => {
     if (!image) return;
 
     // We process the full resolution image right before export
@@ -82,11 +118,12 @@ export default function EditorPage() {
         applyColorGrading(imageData.data, currentSettings);
         ctx.putImageData(imageData, 0, 0);
 
-        // Export as High-Quality JPEG
-        const fullResUrl = canvas.toDataURL("image/jpeg", 0.95);
+        // Export as requested format (JPG or PNG)
+        const ext = format === "image/png" ? "png" : "jpg";
+        const fullResUrl = canvas.toDataURL(format, format === "image/jpeg" ? 0.95 : undefined);
         const link = document.createElement("a");
         link.href = fullResUrl;
-        link.download = `ecstasy-grade-${fileName || "image.jpg"}`;
+        link.download = `ecstasy-grade-${fileName ? fileName.split('.')[0] : "image"}.${ext}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -94,9 +131,10 @@ export default function EditorPage() {
         console.error("Export Failed:", err);
         // Fallback to preview if full res fails (e.g. strict CORS on canvas)
         if (processedImageUrl) {
+          const ext = format === "image/png" ? "png" : "jpg";
           const link = document.createElement("a");
           link.href = processedImageUrl;
-          link.download = `ecstasy-preview-${fileName || "image.jpg"}`;
+          link.download = `ecstasy-preview-${fileName ? fileName.split('.')[0] : "image"}.${ext}`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
@@ -157,9 +195,7 @@ export default function EditorPage() {
             <button className="header-btn" onClick={resetAdjustments}>
               Reset
             </button>
-            <button className="export-btn" onClick={handleExport}>
-              Export
-            </button>
+            <ExportSplitButton onExport={handleExport} />
           </div>
         </header>
         <div className="editor-content">
