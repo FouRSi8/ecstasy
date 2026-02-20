@@ -23,8 +23,9 @@ export const EcstasyProvider = ({ children }) => {
   const [saturation, setSaturation] = useState(100);
 
   // Cinematic Style State
-  const [cinematicGrade, setCinematicGrade] = useState(0);
+  const [cinematicGrade, setCinematicGrade] = useState(100);
   const [cinematicStyle, setCinematicStyle] = useState("neutral"); // 'warm', 'cold', 'neutral'
+  const [dynamicStyles, setDynamicStyles] = useState(null);
 
   // HSL State
   const [redHue, setRedHue] = useState(0);
@@ -63,17 +64,13 @@ export const EcstasyProvider = ({ children }) => {
       const launched = localStorage.getItem("ecstasy_launched") === "true";
       const savedKey = localStorage.getItem("ecstasy_api_key") || "";
       const savedTier = localStorage.getItem("ecstasy_tier") || "free";
-      const exhaustedDate = localStorage.getItem("ecstasy_quota_exhausted_date");
 
       setHasLaunched(launched);
       setUserApiKey(savedKey);
       setTier(savedTier);
 
-      if (exhaustedDate === new Date().toDateString()) {
-        setIsQuotaExhausted(true);
-      } else {
-        localStorage.removeItem("ecstasy_quota_exhausted_date");
-      }
+      // Quota is now strictly session-based and relies entirely on API fallback detection
+      setIsQuotaExhausted(false);
     }
   }, []);
 
@@ -194,7 +191,12 @@ export const EcstasyProvider = ({ children }) => {
     redHue, redSat, orangeHue, orangeSat,
     greenHue, greenSat, blueHue, blueSat,
     curveShadows, curveMidtones, curveHighlights,
-    cinematicGrade, cinematicStyle
+    cinematicGrade, cinematicStyle,
+    dynamicPalettes: dynamicStyles ? {
+      warm: { shadowColor: dynamicStyles.warm?.shadowColor, highlightColor: dynamicStyles.warm?.highlightColor },
+      neutral: { shadowColor: dynamicStyles.neutral?.shadowColor, highlightColor: dynamicStyles.neutral?.highlightColor },
+      cold: { shadowColor: dynamicStyles.cold?.shadowColor, highlightColor: dynamicStyles.cold?.highlightColor }
+    } : null
   };
 
   const processedImageUrl = useImageFilter(image, settings);
@@ -244,8 +246,9 @@ export const EcstasyProvider = ({ children }) => {
     setCurveShadows(s.curveShadows ?? 0);
     setCurveMidtones(s.curveMidtones ?? 0);
     setCurveHighlights(s.curveHighlights ?? 0);
-    setCinematicGrade(s.cinematicGrade ?? 0);
+    setCinematicGrade(s.cinematicGrade ?? 100);
     setCinematicStyle(s.cinematicStyle ?? "neutral");
+    setDynamicStyles(s.dynamicStyles ?? null);
   };
 
   const undo = () => {
@@ -267,6 +270,36 @@ export const EcstasyProvider = ({ children }) => {
   };
 
   // --- ACTIONS ---
+  // A wrapper for setting cinematic style that applies the linked Basic/HSL adjustments
+  const updateCinematicStyle = (style) => {
+    setCinematicStyle(style);
+
+    // If we have AI generated dynamic styles, pull all sliders to match the selected mood
+    if (dynamicStyles && dynamicStyles[style]) {
+      const pkg = dynamicStyles[style];
+      setExposure(pkg.exposure ?? exposure);
+      setContrast(pkg.contrast ?? contrast);
+      setSaturation(pkg.saturation ?? saturation);
+      setTemperature(pkg.temperature ?? temperature);
+      setTint(pkg.tint ?? tint);
+      setHighlights(pkg.highlights ?? highlights);
+      setShadows(pkg.shadows ?? shadows);
+      setVibrance(pkg.vibrance ?? vibrance);
+
+      setRedHue(pkg.redHue ?? redHue);
+      setRedSat(pkg.redSat ?? redSat);
+      setOrangeHue(pkg.orangeHue ?? orangeHue);
+      setOrangeSat(pkg.orangeSat ?? orangeSat);
+      setGreenHue(pkg.greenHue ?? greenHue);
+      setGreenSat(pkg.greenSat ?? greenSat);
+      setBlueHue(pkg.blueHue ?? blueHue);
+      setBlueSat(pkg.blueSat ?? blueSat);
+
+      setCurveShadows(pkg.curveShadows ?? curveShadows);
+      setCurveMidtones(pkg.curveMidtones ?? curveMidtones);
+      setCurveHighlights(pkg.curveHighlights ?? curveHighlights);
+    }
+  };
   const resetAdjustments = () => {
     setExposure(0);
     setContrast(100);
@@ -287,8 +320,9 @@ export const EcstasyProvider = ({ children }) => {
     setCurveShadows(0);
     setCurveMidtones(0);
     setCurveHighlights(0);
-    setCinematicGrade(0);
+    setCinematicGrade(100);
     setCinematicStyle("neutral");
+    setDynamicStyles(null);
     setCategory(null);
     setHistory([]);
     setHistoryIndex(-1);
@@ -345,11 +379,39 @@ export const EcstasyProvider = ({ children }) => {
       img.src = url;
     });
 
+  const applyFallbackData = (fallbackData) => {
+    if (!fallbackData) return;
+
+    setExposure(fallbackData.exposure ?? 0);
+    setContrast(fallbackData.contrast ?? 105);
+    setSaturation(fallbackData.saturation ?? 100);
+    setTemperature(fallbackData.temperature ?? 0);
+    setTint(fallbackData.tint ?? 0);
+    setHighlights(fallbackData.highlights ?? 0);
+    setShadows(fallbackData.shadows ?? 0);
+    setVibrance(fallbackData.vibrance ?? 0);
+
+    setRedHue(fallbackData.redHue ?? 0);
+    setRedSat(fallbackData.redSat ?? 0);
+    setOrangeHue(fallbackData.orangeHue ?? 0);
+    setOrangeSat(fallbackData.orangeSat ?? 0);
+    setGreenHue(fallbackData.greenHue ?? 0);
+    setGreenSat(fallbackData.greenSat ?? 0);
+    setBlueHue(fallbackData.blueHue ?? 0);
+    setBlueSat(fallbackData.blueSat ?? 0);
+
+    setCurveShadows(fallbackData.curveShadows ?? 0);
+    setCurveMidtones(fallbackData.curveMidtones ?? 0);
+    setCurveHighlights(fallbackData.curveHighlights ?? 0);
+    setCinematicGrade(100);
+    setCinematicStyle("neutral");
+  };
+
   const handleAutoGrade = async () => {
     if (!image) return false;
 
     if (tier === "free" && isQuotaExhausted) {
-      setStatus("Daily limit reached! Upgrade to Pro or wait until tomorrow.");
+      setStatus("Daily limit reached! Upgrade to Pro or wait 24 hours.");
       return false;
     }
 
@@ -398,11 +460,15 @@ export const EcstasyProvider = ({ children }) => {
       if (!response.ok) {
         if (data.error && (data.error.toLowerCase().includes("quota") || data.error.toLowerCase().includes("429") || data.error.toLowerCase().includes("exhausted"))) {
           setIsQuotaExhausted(true);
-          if (typeof window !== "undefined") {
-            localStorage.setItem("ecstasy_quota_exhausted_date", new Date().toDateString());
-          }
-          setStatus("Daily limit reached! Upgrade to Pro or wait until tomorrow.");
+          setStatus("Daily limit reached! Serving Fallback Base Grade.");
           setIsProcessing(false);
+
+          // Still apply the fallback data if provided by the backend, or run basic math local
+          if (data.fallback) {
+            applyFallbackData(JSON.parse(data.fallback));
+          } else {
+            handleAutoGradeLocal(inputStats);
+          }
           return false;
         }
       }
@@ -411,37 +477,76 @@ export const EcstasyProvider = ({ children }) => {
         const resultSettings = JSON.parse(data.result);
         setCategory(resultSettings.category || "General");
 
-        let safeSaturation = resultSettings.saturation ?? 100;
-        // Client-side safety clamp: prevent AI from deep-frying already saturated images
-        if (inputStats && inputStats.saturation > 0.4 && safeSaturation > 105) {
-          safeSaturation = 100;
+        // Support for new multi-state architecture
+        if (resultSettings.dynamicStyles && resultSettings.dynamicStyles.neutral) {
+          const pkg = resultSettings.dynamicStyles.neutral; // Default to neutral after generation
+          setExposure(pkg.exposure ?? 0);
+          setContrast(pkg.contrast ?? 100);
+
+          let safeSaturation = pkg.saturation ?? 100;
+          if (inputStats && inputStats.saturation > 0.4 && safeSaturation > 105) safeSaturation = 100;
+          setSaturation(safeSaturation);
+
+          setTemperature(pkg.temperature ?? 0);
+          setTint(pkg.tint ?? 0);
+          setHighlights(pkg.highlights ?? 0);
+          setShadows(pkg.shadows ?? 0);
+          setVibrance(pkg.vibrance ?? 0);
+
+          setRedHue(pkg.redHue ?? 0);
+          setRedSat(pkg.redSat ?? 0);
+          setOrangeHue(pkg.orangeHue ?? 0);
+          setOrangeSat(pkg.orangeSat ?? 0);
+          setGreenHue(pkg.greenHue ?? 0);
+          setGreenSat(pkg.greenSat ?? 0);
+          setBlueHue(pkg.blueHue ?? 0);
+          setBlueSat(pkg.blueSat ?? 0);
+
+          setCurveShadows(pkg.curveShadows ?? 0);
+          setCurveMidtones(pkg.curveMidtones ?? 0);
+          setCurveHighlights(pkg.curveHighlights ?? 0);
+
+          setDynamicStyles(resultSettings.dynamicStyles);
+        } else {
+          // Fallback for older legacy generations
+          let safeSaturation = resultSettings.saturation ?? 100;
+          if (inputStats && inputStats.saturation > 0.4 && safeSaturation > 105) safeSaturation = 100;
+
+          setExposure(resultSettings.exposure ?? 0);
+          setContrast(resultSettings.contrast ?? 100);
+          setSaturation(safeSaturation);
+          setTemperature(resultSettings.temperature ?? 0);
+          setTint(resultSettings.tint ?? 0);
+          setHighlights(resultSettings.highlights ?? 0);
+          setShadows(resultSettings.shadows ?? 0);
+          setVibrance(resultSettings.vibrance ?? 0);
+
+          setRedHue(resultSettings.redHue ?? 0);
+          setRedSat(resultSettings.redSat ?? 0);
+          setOrangeHue(resultSettings.orangeHue ?? 0);
+          setOrangeSat(resultSettings.orangeSat ?? 0);
+          setGreenHue(resultSettings.greenHue ?? 0);
+          setGreenSat(resultSettings.greenSat ?? 0);
+          setBlueHue(resultSettings.blueHue ?? 0);
+          setBlueSat(resultSettings.blueSat ?? 0);
+
+          setCurveShadows(resultSettings.curveShadows ?? 0);
+          setCurveMidtones(resultSettings.curveMidtones ?? 0);
+          setCurveHighlights(resultSettings.curveHighlights ?? 0);
+
+          // If it came back with dynamicPalettes instead of styles, wrap it
+          if (resultSettings.dynamicPalettes) {
+            setDynamicStyles({
+              neutral: { shadowColor: resultSettings.dynamicPalettes.neutral?.shadowColor, highlightColor: resultSettings.dynamicPalettes.neutral?.highlightColor },
+              warm: { shadowColor: resultSettings.dynamicPalettes.warm?.shadowColor, highlightColor: resultSettings.dynamicPalettes.warm?.highlightColor },
+              cold: { shadowColor: resultSettings.dynamicPalettes.cold?.shadowColor, highlightColor: resultSettings.dynamicPalettes.cold?.highlightColor }
+            });
+          }
         }
 
-        setExposure(resultSettings.exposure ?? 0);
-        setContrast(resultSettings.contrast ?? 100);
-        setSaturation(safeSaturation);
-        setTemperature(resultSettings.temperature ?? 0);
-        setTint(resultSettings.tint ?? 0);
-        setHighlights(resultSettings.highlights ?? 0);
-        setShadows(resultSettings.shadows ?? 0);
-        setVibrance(resultSettings.vibrance ?? 0);
-
-        // HSL
-        setRedHue(resultSettings.redHue ?? 0);
-        setRedSat(resultSettings.redSat ?? 0);
-        setOrangeHue(resultSettings.orangeHue ?? 0);
-        setOrangeSat(resultSettings.orangeSat ?? 0);
-        setGreenHue(resultSettings.greenHue ?? 0);
-        setGreenSat(resultSettings.greenSat ?? 0);
-        setBlueHue(resultSettings.blueHue ?? 0);
-        setBlueSat(resultSettings.blueSat ?? 0);
-
-        // Curves
-        setCurveShadows(resultSettings.curveShadows ?? 0);
-        setCurveMidtones(resultSettings.curveMidtones ?? 0);
-        setCurveHighlights(resultSettings.curveHighlights ?? 0);
-        setCinematicGrade(resultSettings.cinematicGrade ?? 0);
+        setCinematicGrade(resultSettings.cinematicGrade ?? 100);
         setCinematicStyle(resultSettings.cinematicStyle || "neutral");
+
 
         setStatus("Graded");
       } else {
@@ -483,7 +588,8 @@ export const EcstasyProvider = ({ children }) => {
     curveMidtones, setCurveMidtones,
     curveHighlights, setCurveHighlights,
     cinematicGrade, setCinematicGrade,
-    cinematicStyle, setCinematicStyle,
+    cinematicStyle, setCinematicStyle: updateCinematicStyle,
+    dynamicStyles, setDynamicStyles,
     category, setCategory,
     isProcessing, setIsProcessing,
     status, setStatus,

@@ -132,19 +132,19 @@ export const computeGradeFromAnalysis = (input, reference = null) => {
       saturation: isRefGrayscale
         ? 0
         : Math.round(
-            Math.max(
-              0,
-              Math.min(
-                200,
-                100 + (reference.saturation - input.saturation) * 150
-              )
+          Math.max(
+            0,
+            Math.min(
+              200,
+              100 + (reference.saturation - input.saturation) * 150
             )
-          ),
+          )
+        ),
       temperature: isRefGrayscale
         ? 0
         : Math.round(
-            Math.max(-100, Math.min(100, (reference.temp - input.temp) * 80))
-          ),
+          Math.max(-100, Math.min(100, (reference.temp - input.temp) * 80))
+        ),
       tint: 0,
       highlights: Math.round(
         Math.max(
@@ -158,6 +158,8 @@ export const computeGradeFromAnalysis = (input, reference = null) => {
           Math.min(100, (input.shadowLift - reference.shadowLift) / 2.5)
         )
       ),
+      cinematicGrade: 100,
+      cinematicStyle: "neutral",
     };
   }
   const exp = input.luminance < 90 ? 15 : input.luminance > 160 ? -10 : 5;
@@ -174,5 +176,7 @@ export const computeGradeFromAnalysis = (input, reference = null) => {
     tint: 0,
     highlights: high,
     shadows: shad,
+    cinematicGrade: 100,
+    cinematicStyle: "neutral",
   };
 };

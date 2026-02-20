@@ -25,7 +25,7 @@ const DEFAULT_GRADE = {
   curveMidtones: 0,
   curveHighlights: 0,
   // Cinematic Look
-  cinematicGrade: 0,
+  cinematicGrade: 100,
   cinematicStyle: "neutral",
 };
 
@@ -46,9 +46,20 @@ function parseGradeJson(text) {
     const parsed = JSON.parse(jsonString);
     const n = {};
     for (const key in parsed) {
-      n[key.toLowerCase()] = parsed[key];
+      n[key] = parsed[key];
     }
 
+    // New format leverages dynamicStyles, fallback to single format if not present
+    if (n.dynamicStyles) {
+      return {
+        category: String(n.category || "General"),
+        dynamicStyles: n.dynamicStyles,
+        cinematicGrade: n.cinematicGrade !== undefined ? Number(n.cinematicGrade) : 100,
+        cinematicStyle: "neutral" // Default style
+      }
+    }
+
+    // Legacy fallback mapping
     return {
       category: String(n.category || "General"),
       exposure: Number(n.exposure) || 0,
@@ -70,8 +81,9 @@ function parseGradeJson(text) {
       curveShadows: Number(n.curveshadows) || 0,
       curveMidtones: Number(n.curvemidtones) || 0,
       curveHighlights: Number(n.curvehighlights) || 0,
-      cinematicGrade: Number(n.cinematicgrade) || 0,
+      cinematicGrade: n.cinematicgrade !== undefined ? Number(n.cinematicgrade) : 100,
       cinematicStyle: String(n.cinematicstyle || "neutral").toLowerCase(),
+      dynamicPalettes: n.dynamicpalettes || null,
     };
   } catch (e) {
     console.error("JSON Parse Error:", e);
@@ -90,10 +102,16 @@ Determine the category:
 - **Landscape**: Nature, scenery, mountains, beaches, forests
 - **Wildlife**: Animals, birds, insects in natural settings
 - **Portrait**: Human subjects, faces, fashion
+- **Automotive**: Cars, motorcycles, vehicles
+- **Fashion**: Clothing, style, editorial photography
+- **Product**: Studio shots, electronics, packaging
+- **Cyberpunk**: Neon, futuristic, synthwave aesthetics
+- **Film/Vintage**: Analog film look, retro aesthetics, polaroids
+- **Architecture**: Buildings, interiors, structural design
 - **Anime**: Japanese animation style, hand-drawn illustrations
-- **Digital Art**: Computer-generated art, 3D renders, AI art, wallpaper-style images, concept art
-- **Urban**: Architecture, cityscapes, street photography
-- **Food**: Culinary, product photography
+- **Digital Art**: Computer-generated art, 3D renders, AI art, concept art
+- **Urban**: Cityscapes, street photography
+- **Food**: Culinary photography
 - **Macro**: Extreme close-ups, textures
 - **General**: Anything else
 
@@ -101,10 +119,10 @@ Determine the category:
 
 ### YOUR MISSION:
 Create a FINAL, PERFECT grade. You are a **Correctional Colorist**. The goal is to make the image look stunning and balanced, ready for social media or wallpaper use.
-**CRITICAL AI CONSTRAINT**: You MUST evaluate the original image properties provided to you. If an image is already highly saturated, you MUST NOT increase the saturation—you should maintain or slightly lower it (saturation <= 100) to preserve detail and prevent deep-frying the colors. You are enhancing, not destroying.
+**CRITICAL AI CONSTRAINT**: You MUST evaluate the original image properties provided to you. If an image is already bright and colorful, you MUST NOT increase the saturation—you should maintain or slightly lower it (saturation <= 100) to preserve detail and prevent deep-frying the colors. You are enhancing, not destroying. Keep colors true to life, do not shift actual realistic subject colors.
 
 ### GRADING PHILOSOPHY BY CATEGORY:
-- **Wildlife**: Subtle, natural look. Think National Geographic. Contrast: 105-112. Preserve natural colors, don't over-punch.
+- **Wildlife**: Extremely subtle, natural look. Think National Geographic. Contrast: 105-112. CRITICAL: Preserve natural colors of the animal. DO NOT over-saturate. DO NOT shift the animal's hue.
 - **Landscape**: Cinematic but grounded. Contrast: 108-118. Enhance golden hour warmth naturally.
 - **Portrait**: Skin-friendly. Soft contrast: 102-108. Protect skin tones.
 - **Anime**: Vibrant but balanced. Contrast: 110-125. *DO NOT oversaturate if the original is already colorful.*
@@ -136,41 +154,50 @@ Control tonal response:
 - curveMidtones: Overall brightness pivot
 - curveHighlights: Clip/extend bright tones
 
-### CINEMATIC SPLIT-TONING:
-You have a powerful "Teal & Orange" split-toning engine at your disposal.
-- cinematicStyle ("neutral", "warm", "cold"): Decide the mood of the split-toning. 
-  - 'warm' works beautifully on sunsets, cozy portraits, or autumn scenes a slightly purple shadow and strong golden highlight.
-  - 'cold' works great on night, moody, urban, or winter scenes with deep blue shadows and pale mint highlights.
-  - 'neutral' is the classic teal shadow and orange highlight.
-- cinematicGrade (0 to 100): The intensity of the split-toning effect. For subtle realism keep it between 10-30. For heavy stylization, push it to 50-80.
+### CINEMATIC STYLES MULTI-GENERATION (CRITICAL STEP):
+You must output a \`dynamicStyles\` object containing three completely separate grading packages: \`neutral\`, \`warm\`, and \`cold\`.
+
+CRITICAL INSTRUCTION ON WARM/COLD STYLES & SKIN TONES:
+1. Do NOT use the global \`temperature\` or \`tint\` sliders to create the warmth or coldness! Keep \`temperature\` and \`tint\` relatively close to 0 (or balanced to the original image) across all three styles. 
+2. **PORTRAIT / HUMAN SKIN WARNING**: When creating a 'Warm' style for an image with humans in it, NEVER push \`orangeHue\` positive (e.g. +15). Positive orange hue shifts skin tones into yellow/green (jaundice). Keep \`orangeHue\` at 0 or slightly negative (reddish) to protect skin!
+3. Rely heavily on the \`shadowColor\` and \`highlightColor\` split-toning palettes to inject the mood into the shadows and highlights intelligently.
+
+- **Neutral**: Forcefully balance the image. Remove oversaturation or extreme color casts to make it perfectly natural.
+- **Warm**: Apply Industry grade color correction to make the image change its tones entirely to warmth. Push orange/gold HSL (but protect skin hue), and provide a strong warm split-toning palette (\`shadowColor\` & \`highlightColor\`).
+- **Cold**: Apply Industry grade color correction to make the image change its tones entirely to cold. Push cyan/navy HSL, and provide a strong icy split-toning palette (\`shadowColor\` & \`highlightColor\`).
+
+For each style, provide exact RGB values for \`shadowColor\` and \`highlightColor\` that fit this specific image perfectly!
 
 ## STEP 3: OUTPUT
-Provide brief reasoning, then output JSON in a code block.
+Provide brief reasoning, then output JSON in a code block. Output MUST match this structure:
 
 \`\`\`json
 {
-  "category": "Wildlife",
-  "exposure": 5,
-  "contrast": 115,
-  "saturation": 110,
-  "temperature": 3,
-  "tint": 0,
-  "highlights": -10,
-  "shadows": 15,
-  "vibrance": 10,
-  "redHue": 0,
-  "redSat": 0,
-  "orangeHue": 5,
-  "orangeSat": 10,
-  "greenHue": -5,
-  "greenSat": 15,
-  "blueHue": 0,
-  "blueSat": 5,
-  "curveShadows": 5,
-  "curveMidtones": 0,
-  "curveHighlights": -5,
-  "cinematicStyle": "warm",
-  "cinematicGrade": 35
+  "category": "Landscape",
+  "cinematicGrade": 100,
+  "dynamicStyles": {
+    "neutral": {
+      "exposure": 5, "contrast": 115, "saturation": 100, "temperature": 0, "tint": 0,
+      "highlights": -10, "shadows": 15, "vibrance": 5,
+      "redHue": 0, "redSat": 0, "orangeHue": 0, "orangeSat": 0, "greenHue": 0, "greenSat": 0, "blueHue": 0, "blueSat": 0,
+      "curveShadows": 5, "curveMidtones": 0, "curveHighlights": -5,
+      "shadowColor": { "r": 10, "g": 80, "b": 100 }, "highlightColor": { "r": 255, "g": 200, "b": 150 }
+    },
+    "warm": {
+      "exposure": 5, "contrast": 115, "saturation": 110, "temperature": 5, "tint": 0,
+      "highlights": -10, "shadows": 15, "vibrance": 15,
+      "redHue": 5, "redSat": 10, "orangeHue": 15, "orangeSat": 20, "greenHue": -5, "greenSat": 5, "blueHue": 0, "blueSat": -10,
+      "curveShadows": 5, "curveMidtones": 0, "curveHighlights": -5,
+      "shadowColor": { "r": 80, "g": 20, "b": 10 }, "highlightColor": { "r": 255, "g": 210, "b": 100 }
+    },
+    "cold": {
+      "exposure": 2, "contrast": 120, "saturation": 95, "temperature": -5, "tint": 0,
+      "highlights": -15, "shadows": 10, "vibrance": -5,
+      "redHue": 0, "redSat": -15, "orangeHue": 0, "orangeSat": -20, "greenHue": 5, "greenSat": -10, "blueHue": -10, "blueSat": 25,
+      "curveShadows": 10, "curveMidtones": -5, "curveHighlights": -5,
+      "shadowColor": { "r": 5, "g": 20, "b": 120 }, "highlightColor": { "r": 180, "g": 220, "b": 230 }
+    }
+  }
 }
 \`\`\`
 `;

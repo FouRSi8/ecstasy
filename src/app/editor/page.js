@@ -40,6 +40,7 @@ export default function EditorPage() {
     curveHighlights, setCurveHighlights,
     cinematicGrade, setCinematicGrade,
     cinematicStyle, setCinematicStyle,
+    dynamicPalettes,
     resetAdjustments,
     undo, redo, canUndo, canRedo
   } = useEcstasy();
@@ -68,7 +69,7 @@ export default function EditorPage() {
           redHue, redSat, orangeHue, orangeSat,
           greenHue, greenSat, blueHue, blueSat,
           curveShadows, curveMidtones, curveHighlights,
-          cinematicGrade, cinematicStyle
+          cinematicGrade, cinematicStyle, dynamicPalettes
         };
 
         applyColorGrading(imageData.data, currentSettings);
@@ -118,8 +119,7 @@ export default function EditorPage() {
                 className="category-badge"
                 style={{
                   backgroundColor: "var(--accent-color, #6366f1)",
-                  color: "var(--accent-text, #ffffff)",
-                  boxShadow: "0 0 10px var(--accent-glow, rgba(99, 102, 241, 0.5))"
+                  color: "var(--accent-text, #ffffff)"
                 }}
                 title="AI Detected Category"
               >
@@ -183,8 +183,7 @@ export default function EditorPage() {
                 className={`tab-btn ${activePanel === "cinematic" ? "active" : ""}`}
                 onClick={() => setActivePanel("cinematic")}
                 style={{
-                  color: activePanel === "cinematic" ? "var(--accent-color)" : "inherit",
-                  textShadow: activePanel === "cinematic" ? "0 0 10px var(--accent-glow)" : "none"
+                  color: activePanel === "cinematic" ? "var(--accent-color)" : "inherit"
                 }}
               >
                 Cinematic

@@ -13,11 +13,11 @@ export default function Whispers() {
   const hasShownRef = useRef(false);
   const mouseRef = useRef({ x: 0, y: 0 });
   const messages = [
-    "are you looking for something?",
-    "it responds to your touch",
-    "keep moving",
-    "almost there",
-    "do you feel it?"
+    "oh! you're idle?",
+    "wait...",
+    "let her feel safe",
+    "she's curious",
+    "she thinks you're a bait"
   ];
 
   const messageIndexRef = useRef(0);
@@ -163,8 +163,7 @@ export default function Whispers() {
         zIndex: 9998, // Below cursor (9999)
         textTransform: 'lowercase',
         letterSpacing: '1px',
-        whiteSpace: 'nowrap',
-        textShadow: '0 0 5px rgba(0,0,0,0.5)'
+        whiteSpace: 'nowrap'
       }}
     >
       {text}

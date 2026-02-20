@@ -81,23 +81,23 @@ export const applyColorGrading = (data, settings) => {
     r = gray + (r - gray) * satFactor;
     g = gray + (g - gray) * satFactor;
     b = gray + (b - gray) * satFactor;
-    // HSL Adjustments
     let [h, s, l] = rgbToHsl(r, g, b);
-    let hueAdj = 0;
-    let satAdj = 0;
-    if (h <= 40 || h >= 320) {
-      hueAdj = settings.redHue;
-      satAdj = settings.redSat / 100;
-    } else if (h > 40 && h <= 80) {
-      hueAdj = settings.orangeHue;
-      satAdj = settings.orangeSat / 100;
-    } else if (h > 80 && h <= 160) {
-      hueAdj = settings.greenHue;
-      satAdj = settings.greenSat / 100;
-    } else if (h > 200 && h <= 280) {
-      hueAdj = settings.blueHue;
-      satAdj = settings.blueSat / 100;
-    }
+
+    // Smooth HSL Color Band Isolation (prevents artifacting during aggressive shifts)
+    const getDist = (h1, h2) => {
+      let d = Math.abs(h1 - h2);
+      return d > 180 ? 360 - d : d;
+    };
+
+    // Centers: Red=0, Orange/Yellow=45, Green=120, Blue=220
+    let wR = Math.max(0, 1 - getDist(h, 0) / 45);
+    let wO = Math.max(0, 1 - getDist(h, 45) / 45);
+    let wG = Math.max(0, 1 - getDist(h, 120) / 75);
+    let wB = Math.max(0, 1 - getDist(h, 220) / 80);
+
+    let hueAdj = (settings.redHue * wR) + (settings.orangeHue * wO) + (settings.greenHue * wG) + (settings.blueHue * wB);
+    let satAdj = (settings.redSat * wR) + (settings.orangeSat * wO) + (settings.greenSat * wG) + (settings.blueSat * wB);
+    satAdj /= 100; // Normalize percentage
     h += hueAdj;
     h = ((h % 360) + 360) % 360;
     s *= 1 + satAdj;
@@ -116,39 +116,65 @@ export const applyColorGrading = (data, settings) => {
 
       // Define palettes based on style
       let shadowColor, highlightColor;
-      if (style === 'warm') {
-        shadowColor = { r: 60, g: 10, b: 50 }; // Magenta/deep purple shadows
-        highlightColor = { r: 255, g: 210, b: 150 }; // Soft peachy/warm highlights
-      } else if (style === 'cold') {
-        shadowColor = { r: 5, g: 40, b: 90 }; // Deep cool blue shadows
-        highlightColor = { r: 180, g: 220, b: 210 }; // Pale minty highlights
-      } else { // neutral
-        shadowColor = { r: 10, g: 80, b: 100 }; // Standard Teal
-        highlightColor = { r: 255, g: 200, b: 150 }; // Soft Amber/Orange
+
+      if (settings.dynamicPalettes && settings.dynamicPalettes[style]) {
+        shadowColor = settings.dynamicPalettes[style].shadowColor;
+        highlightColor = settings.dynamicPalettes[style].highlightColor;
+      } else {
+        // Fallback to hardcoded palettes
+        if (style === 'warm') {
+          shadowColor = { r: 60, g: 10, b: 50 }; // Magenta/deep purple shadows
+          highlightColor = { r: 255, g: 210, b: 150 }; // Soft peachy/warm highlights
+        } else if (style === 'cold') {
+          shadowColor = { r: 5, g: 40, b: 90 }; // Deep cool blue shadows
+          highlightColor = { r: 180, g: 220, b: 210 }; // Pale minty highlights
+        } else { // neutral
+          shadowColor = { r: 10, g: 80, b: 100 }; // Standard Teal
+          highlightColor = { r: 255, g: 200, b: 150 }; // Soft Amber/Orange
+        }
       }
 
       // Calculate luminance for mapping
       const lum = 0.299 * r + 0.587 * g + 0.114 * b;
 
-      // Map shadows (lum < 128) and highlights (lum > 128), smoothing the transition
-      let shadowWeight = Math.max(0, 1 - (lum / 128));
+      // Determine highlight/shadow mask
+      // Widen the midtones reach by reducing the strictness of the cutoff (was 127)
+      let shadowWeight = Math.max(0, (128 - lum) / 128); // 0 to 1
       let highlightWeight = Math.max(0, (lum - 128) / 127);
 
-      // Smooth weights so extreme blacks/whites aren't utterly tinted
-      shadowWeight = Math.pow(shadowWeight, 1.5) * intensity * 0.4;
-      highlightWeight = Math.pow(highlightWeight, 1.5) * intensity * 0.4;
+      // We want a subtle, professional split tone. The HSL handles the gross color shifts.
+      // 40% maximum opacity for split toning is tasteful for cinematic grading.
+      shadowWeight = Math.pow(shadowWeight, 1.5) * intensity * 0.40;
+      highlightWeight = Math.pow(highlightWeight, 1.5) * intensity * 0.40;
 
-      // Interpolate colors into RGB
-      r = r * (1 - shadowWeight) + shadowColor.r * shadowWeight;
-      g = g * (1 - shadowWeight) + shadowColor.g * shadowWeight;
-      b = b * (1 - shadowWeight) + shadowColor.b * shadowWeight;
+      // --- SOFT LIGHT / MULTIPLY HYBRID BLENDING ---
+      // Instead of linearly overriding the pixel (which flattens the image),
+      // we blend the color using math that protects luminance.
+      const blendSoftLight = (base, blend) => {
+        const b = base / 255;
+        const s = blend / 255;
+        let result;
+        if (s <= 0.5) {
+          result = b - (1 - 2 * s) * b * (1 - b);
+        } else {
+          const d = b <= 0.25 ? ((16 * b - 12) * b + 4) * b : Math.sqrt(b);
+          result = b + (2 * s - 1) * (d - b);
+        }
+        return result * 255;
+      };
 
-      r = r * (1 - highlightWeight) + highlightColor.r * highlightWeight;
-      g = g * (1 - highlightWeight) + highlightColor.g * highlightWeight;
-      b = b * (1 - highlightWeight) + highlightColor.b * highlightWeight;
+      // Shadow application
+      r = r * (1 - shadowWeight) + blendSoftLight(r, shadowColor.r) * shadowWeight;
+      g = g * (1 - shadowWeight) + blendSoftLight(g, shadowColor.g) * shadowWeight;
+      b = b * (1 - shadowWeight) + blendSoftLight(b, shadowColor.b) * shadowWeight;
+
+      // Highlight application
+      r = r * (1 - highlightWeight) + blendSoftLight(r, highlightColor.r) * highlightWeight;
+      g = g * (1 - highlightWeight) + blendSoftLight(g, highlightColor.g) * highlightWeight;
+      b = b * (1 - highlightWeight) + blendSoftLight(b, highlightColor.b) * highlightWeight;
 
       // Cinematic Contrast S-Curve boost
-      const contrastBoost = intensity * 0.15; // Max 15% extra contrast
+      const contrastBoost = intensity * 0.12; // 12% extra contrast for depth
       r = ((r / 255 - 0.5) * (1 + contrastBoost) + 0.5) * 255;
       g = ((g / 255 - 0.5) * (1 + contrastBoost) + 0.5) * 255;
       b = ((b / 255 - 0.5) * (1 + contrastBoost) + 0.5) * 255;
