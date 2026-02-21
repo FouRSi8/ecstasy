@@ -28,17 +28,17 @@ const ExportSplitButton = ({ onExport }) => {
   }
 
   return (
-    <div style={{ display: 'flex', width: '100px' }} onMouseLeave={() => setIsOpen(false)}>
+    <div style={{ display: 'flex', width: '100px' }}>
       <button
         className="export-btn"
-        onClick={() => { onExport('image/jpeg'); setIsOpen(false); }}
+        onClick={() => { onExport('image/jpeg'); }}
         style={{ flex: 1, padding: '10px 0', borderTopRightRadius: 0, borderBottomRightRadius: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '11px' }}
       >
         JPG
       </button>
       <button
         className="export-btn"
-        onClick={() => { onExport('image/png'); setIsOpen(false); }}
+        onClick={() => { onExport('image/png'); }}
         style={{ flex: 1, padding: '10px 0', borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeft: '1px solid rgba(255,255,255,0.2)', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '11px' }}
       >
         PNG
@@ -51,6 +51,7 @@ export default function EditorPage() {
   const router = useRouter();
   const {
     image,
+    previewImage,
     reference,
     processedImageUrl,
     fileName,
@@ -81,6 +82,23 @@ export default function EditorPage() {
     resetAdjustments,
     undo, redo, canUndo, canRedo
   } = useEcstasy();
+
+  const [toastOpacity, setToastOpacity] = React.useState(0);
+  const [toastVisible, setToastVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    if (image) {
+      setToastVisible(true);
+      const showTimer = setTimeout(() => setToastOpacity(1), 50);
+      const fadeTimer = setTimeout(() => setToastOpacity(0), 3500);
+      const removeTimer = setTimeout(() => setToastVisible(false), 4000);
+      return () => {
+        clearTimeout(showTimer);
+        clearTimeout(fadeTimer);
+        clearTimeout(removeTimer);
+      };
+    }
+  }, [image]);
 
   React.useEffect(() => {
     if (reference && activePanel === "cinematic") {
@@ -203,9 +221,34 @@ export default function EditorPage() {
             <ExportSplitButton onExport={handleExport} />
           </div>
         </header>
+
+        {/* Toast Notification */}
+        {toastVisible && (
+          <div style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '24px',
+            background: 'rgba(0, 0, 0, 0.85)',
+            color: '#fff',
+            padding: '12px 24px',
+            borderRadius: '8px',
+            zIndex: 1000,
+            fontSize: '13px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            opacity: toastOpacity,
+            transition: 'opacity 0.5s ease',
+            pointerEvents: 'none',
+            textAlign: 'center',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
+          }}>
+            Preview images are displayed at a lower resolution to optimize performance.
+          </div>
+        )}
+
         <div className="editor-content">
           <div className="image-viewport">
-            <CompareSlider image={image} processedImage={processedImageUrl} />
+            <CompareSlider image={previewImage || image} processedImage={processedImageUrl} />
           </div>
           <div className="controls-panel">
             <div className="panel-tabs">

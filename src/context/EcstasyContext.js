@@ -11,6 +11,40 @@ export const EcstasyProvider = ({ children }) => {
   const [reference, setReference] = useState(null);
   const [fileName, setFileName] = useState("New Project");
   const [activePanel, setActivePanel] = useState("basic");
+  const [previewImage, setPreviewImage] = useState(null);
+
+  // Generate downscaled preview for optimization
+  useEffect(() => {
+    if (!image) {
+      setPreviewImage(null);
+      return;
+    }
+    const img = new Image();
+    if (!image.startsWith("data:") && !image.startsWith("blob:")) {
+      img.crossOrigin = "anonymous";
+    }
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+
+      // 900p standard: cap largest dimension to 1600 
+      const MAX_DIMENSION = 1600;
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        const scale = MAX_DIMENSION / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      // Generate a fast quality jpeg for preview
+      setPreviewImage(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.src = image;
+  }, [image]);
 
   // Basic Controls State
   const [exposure, setExposure] = useState(0);
@@ -204,7 +238,8 @@ export const EcstasyProvider = ({ children }) => {
     } : null
   };
 
-  const processedImageUrl = useImageFilter(image, settings);
+  // We use the downscaled previewImage for fast processing
+  const processedImageUrl = useImageFilter(previewImage, settings);
 
   // --- HISTORY EFFECT (Debounced) ---
   const settingsStr = JSON.stringify(settings);
@@ -521,7 +556,7 @@ export const EcstasyProvider = ({ children }) => {
   };
 
   const value = {
-    image, setImage,
+    image, setImage, previewImage,
     reference, setReference,
     fileName, setFileName,
     processedImageUrl,
